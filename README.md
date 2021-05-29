@@ -45,42 +45,29 @@ sensor:
 
 <h3><a class="title-link" name="options" href="#options"></a>Options</h3>
 
-<p>
-<span style="color:#222222bd; font-weight: bold; font-size: 16px; font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;";>zones</span>
-<span style="color:#8792a2; font-size: 13px; font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;";>list</span>
-<span style="color:#e56f4a; font-size: 11px; font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;";>REQUIRED</span>
-</p>
-<p style="color:#4f566b; font-size: 14px;";>list of media_player entity_ids.</p>
+<h4><a class="title-link" name="zones" href="#zones"></a>zones <i>list</i> <b>Required</b></h4>
 
-<p>
-<span style="color:#222222bd; font-weight: bold; font-size: 16px; font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;";>name</span>
-<span style="color:#8792a2; font-size: 13px; font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;";>str (optional, default: Active Media Player)</span>
-</p>
-<p style="color:#4f566b; font-size: 14px;";>Friendly name of the Sensor.</p>
+List of media_player entity_ids, the order of the zones is determined by the order of this list.
 
-<p>
-<span style="color:#222222bd; font-weight: bold; font-size: 16px; font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;";>volume_max</span>
-<span style="color:#8792a2; font-size: 13px; font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;";>float (optional, default: 1.0)</span>
-</p>
-<p style="color:#4f566b; font-size: 14px;";>A maximum volume that the controller can go to.</p>
+<h4><a class="title-link" name="name" href="#name"></a>name <i>str (optional, default: Active Media Player)</i></h4>
 
-<p>
-<span style="color:#222222bd; font-weight: bold; font-size: 16px; font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;";>volume_min</span>
-<span style="color:#8792a2; font-size: 13px; font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;";>float (optional, default: 0.0)</span>
-</p>
-<p style="color:#4f566b; font-size: 14px;";>A minimum volume that the controller can go to.</p>
+Friendly name of the Sensor.
 
-<p>
-<span style="color:#222222bd; font-weight: bold; font-size: 16px; font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;";>volume_increment</span>
-<span style="color:#8792a2; font-size: 13px; font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;";>float (optional, default: 0.01)</span>
-</p>
-<p style="color:#4f566b; font-size: 14px;";>The amount of volume that moves up and down when a volume_up/down service is used.</p>
+<h4><a class="title-link" name="volume_max" href="#volume_max"></a>volume_max <i>float (optional, default: 1.0)</i></h4>
 
-<p>
-<span style="color:#222222bd; font-weight: bold; font-size: 16px; font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;";>snap_volume</span>
-<span style="color:#8792a2; font-size: 13px; font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;";>bool (optional, default: false)</span>
-</p>
-<p style="color:#4f566b; font-size: 14px;";>When this is active, the volume will snap to the volume increment.  Meaning if you have an increment of 0.5, the volume will only increase to all numerical values that are devisible by 0.05.  I.e. 0.0, 0.05, 0.10, 0.15, etc.</p>
+A maximum volume that the controller can go to.
+
+<h4><a class="title-link" name="volume_min" href="#volume_min"></a>volume_min <i>float (optional, default: 0.0)</i></h4>
+
+A minimum volume that the controller can go to.
+
+<h4><a class="title-link" name="volume_increment" href="#volume_increment"></a>volume_increment <i>float (optional, default: 0.01)</i></h4>
+
+The amount of volume that moves up and down when a volume_up/down service is used.
+
+<h4><a class="title-link" name="snap_volume" href="#snap_volume"></a>snap_volume <i>bool (optional, default: false)</i></h4>
+
+When this is active, the volume will snap to the volume increment.  Meaning if you have an increment of 0.5, the volume will only increase to all numerical values that are devisible by 0.05.  I.e. 0.0, 0.05, 0.10, 0.15, etc.
 
 <h1><a class="title-link" name="services" href="#services"></a>Services</h1>
 
