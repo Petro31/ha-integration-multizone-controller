@@ -88,6 +88,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up the multizone sensor."""
 
+    unique_id = config.get(CONF_UNIQUE_ID)
     name = config[CONF_NAME]
     volume_min = config[CONF_VOLUME_MIN]
     volume_max = config[CONF_VOLUME_MAX]
@@ -120,7 +121,14 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     async_add_entities(
         [
             MultizoneSensor(
-                name, zones, all_zones, volume_min, volume_max, volume_inc, snap
+                unique_id,
+                name,
+                zones,
+                all_zones,
+                volume_min,
+                volume_max,
+                volume_inc,
+                snap,
             )
         ]
     )
@@ -173,6 +181,7 @@ class MultizoneSensor(SensorEntity):
 
     def __init__(
         self,
+        unique_id: str,
         name: str,
         zones: dict[str, Zone],
         all_zones: AllZones,
@@ -181,6 +190,7 @@ class MultizoneSensor(SensorEntity):
         volume_inc: int,
         snap: bool,
     ):
+        self._unique_id = unique_id
         self._name = name
         self._zones = zones
         self._all_zones = all_zones
@@ -204,6 +214,11 @@ class MultizoneSensor(SensorEntity):
                 self.hass, entity_ids, self._async_multizone_sensor_state_listener
             )
         )
+
+    @property
+    def unique_id(self):
+        """Return the unique id of this sensor."""
+        return self._unique_id
 
     @property
     def state(self):
