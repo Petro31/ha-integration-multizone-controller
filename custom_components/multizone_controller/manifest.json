@@ -1,0 +1,9 @@
+{
+    "domain": "multizone_controller",
+    "name": "Multizone Controller",
+    "documentation": "https://github.com/Petro31/ha-integration-multizone-controller",
+    "issue_tracker": "https://github.com/Petro31/ha-integration-multizone-controller/issues",
+    "codeowners": ["@Petro31"],
+    "iot_class": "local_polling",
+    "version": "1.0"
+  }
