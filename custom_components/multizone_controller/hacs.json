@@ -1,0 +1,8 @@
+{
+    "name": "Multizone Controller",
+    "domains": [
+        "sensor"
+    ],
+    "render_readme": true,
+    "iot_class": ["Local Polling"]
+}
