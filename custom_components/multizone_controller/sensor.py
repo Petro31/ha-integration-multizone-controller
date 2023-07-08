@@ -26,6 +26,8 @@ from homeassistant.const import (
     SERVICE_VOLUME_MUTE,
     STATE_OFF,
     STATE_ON,
+    STATE_PLAYING,
+    STATE_IDLE,
 )
 from homeassistant.core import callback
 from homeassistant.helpers import config_validation as cv, entity_platform
@@ -292,39 +294,53 @@ class MultizoneSensor(SensorEntity):
             MEDIA_PLAYER_DOMAIN,
             SERVICE_VOLUME_MUTE,
             {ATTR_MEDIA_VOLUME_MUTED: mute},
-            False,
-            None,
-            None,
-            {ATTR_ENTITY_ID: self._get_active_zones()},
+            blocking=True,
+            target={ATTR_ENTITY_ID: self._get_active_zones()},
+            context=self._context
         )
 
     async def async_mute_volume(self, mute):
         """Mute the volume."""
-        await self.hass.async_add_executor_job(self.mute_volume, mute)
+        await self.hass.services.async_call(
+            MEDIA_PLAYER_DOMAIN,
+            SERVICE_VOLUME_MUTE,
+            {ATTR_MEDIA_VOLUME_MUTED: mute},
+            blocking=True,
+            target={ATTR_ENTITY_ID: self._get_active_zones()},
+            context=self._context
+        )
 
-    def toggle_mute_volume(self):
-        """Toggle mute the volume."""
-        entities = self._get_active_zones()
-        is_volume_muted = any(
+    def _toggle_mute_volume(self, entities) -> bool:
+        return any(
             [
                 self.hass.states.get(entity_id).attributes[ATTR_MEDIA_VOLUME_MUTED]
                 for entity_id in entities
             ]
         )
 
+    def toggle_mute_volume(self):
+        """Toggle mute the volume."""
+        entities = self._get_active_zones()
         self.hass.services.call(
             MEDIA_PLAYER_DOMAIN,
             SERVICE_VOLUME_MUTE,
-            {ATTR_MEDIA_VOLUME_MUTED: not is_volume_muted},
-            False,
-            None,
-            None,
-            {ATTR_ENTITY_ID: entities},
+            {ATTR_MEDIA_VOLUME_MUTED: not self._toggle_mute_volume(entities)},
+            blocking=True,
+            target={ATTR_ENTITY_ID: entities},
+            context=self._context
         )
 
     async def async_toggle_mute_volume(self):
         """Mute the volume."""
-        await self.hass.async_add_executor_job(self.toggle_mute_volume)
+        entities = self._get_active_zones()
+        await self.hass.services.async_call(
+            MEDIA_PLAYER_DOMAIN,
+            SERVICE_VOLUME_MUTE,
+            {ATTR_MEDIA_VOLUME_MUTED: not self._toggle_mute_volume(entities)},
+            blocking=True,
+            target={ATTR_ENTITY_ID: entities},
+            context=self._context
+        )
 
     def set_volume_level(self, volume):
         """Set volume level, range 0..1."""
@@ -332,39 +348,85 @@ class MultizoneSensor(SensorEntity):
             MEDIA_PLAYER_DOMAIN,
             SERVICE_VOLUME_SET,
             {ATTR_MEDIA_VOLUME_LEVEL: volume},
-            False,
-            None,
-            None,
-            {ATTR_ENTITY_ID: self._get_active_zones()},
+            blocking=True,
+            target={ATTR_ENTITY_ID: self._get_active_zones()},
+            context=self._context
         )
 
     async def async_set_volume_level(self, volume):
         """Set volume level, range 0..1."""
-        await self.hass.async_add_executor_job(self.set_volume_level, volume)
+        await self.hass.services.async_call(
+            MEDIA_PLAYER_DOMAIN,
+            SERVICE_VOLUME_SET,
+            {ATTR_MEDIA_VOLUME_LEVEL: volume},
+            blocking=True,
+            target={ATTR_ENTITY_ID: self._get_active_zones()},
+            context=self._context
+        )
+
+    def _next_volume_up(self) -> float | None:
+        volume_level = self._get_combined_volume_level()
+        if volume_level is not None and volume_level < 1:
+            return min(self._volume_max, round(volume_level + self._volume_inc, 2))
+        return None
 
     def volume_up(self):
         """Turn volume up for media player."""
-        volume_level = self._get_combined_volume_level()
-        if volume_level is not None and volume_level < 1:
-            self.set_volume_level(
-                min(self._volume_max, round(volume_level + self._volume_inc, 2))
+        volume = self._next_volume_up()
+        if volume is not None:
+            self.hass.services.call(
+                MEDIA_PLAYER_DOMAIN,
+                SERVICE_VOLUME_SET,
+                {ATTR_MEDIA_VOLUME_LEVEL: volume},
+                blocking=True,
+                target={ATTR_ENTITY_ID: self._get_active_zones()},
+                context=self._context
             )
 
     async def async_volume_up(self):
         """Turn volume up for media player."""
-        await self.hass.async_add_executor_job(self.volume_up)
+        volume = self._next_volume_up()
+        if volume is not None:
+            await self.hass.services.async_call(
+                MEDIA_PLAYER_DOMAIN,
+                SERVICE_VOLUME_SET,
+                {ATTR_MEDIA_VOLUME_LEVEL: volume},
+                blocking=True,
+                target={ATTR_ENTITY_ID: self._get_active_zones()},
+                context=self._context
+            )
+
+    def _next_volume_down(self) -> float | None:
+        volume_level = self._get_combined_volume_level()
+        if volume_level is not None and volume_level > 0:
+            return max(self._volume_min, round(volume_level - self._volume_inc, 2))
+        return None
 
     def volume_down(self):
         """Turn volume down for media player."""
-        volume_level = self._get_combined_volume_level()
-        if volume_level is not None and volume_level > 0:
-            self.set_volume_level(
-                max(self._volume_min, round(volume_level - self._volume_inc, 2))
+        volume = self._next_volume_down()
+        if volume is not None:
+            self.hass.services.call(
+                MEDIA_PLAYER_DOMAIN,
+                SERVICE_VOLUME_SET,
+                {ATTR_MEDIA_VOLUME_LEVEL: volume},
+                blocking=True,
+                target={ATTR_ENTITY_ID: self._get_active_zones()},
+                context=self._context
             )
 
     async def async_volume_down(self):
         """Turn volume down for media player."""
-        await self.hass.async_add_executor_job(self.volume_down)
+        volume = self._next_volume_down()
+        if volume is not None:
+            await self.hass.services.async_call(
+                MEDIA_PLAYER_DOMAIN,
+                SERVICE_VOLUME_SET,
+                {ATTR_MEDIA_VOLUME_LEVEL: volume},
+                blocking=True,
+                target={ATTR_ENTITY_ID: self._get_active_zones()},
+                context=self._context
+            )
 
     @callback
     def _async_multizone_sensor_state_listener(self, event):
@@ -380,7 +442,7 @@ class MultizoneSensor(SensorEntity):
             self.async_write_ha_state()
             return
 
-        self._update_zones(zone, new_state.state == STATE_ON)
+        self._update_zones(zone, new_state.state in [STATE_ON , STATE_PLAYING, STATE_IDLE])
         self.async_write_ha_state()
 
     @callback
