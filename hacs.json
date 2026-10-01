@@ -3,6 +3,7 @@
     "domains": [
         "sensor"
     ],
+    "homeassistant": "2026.10.0b0",
     "render_readme": true,
     "iot_class": ["Local Polling"]
 }

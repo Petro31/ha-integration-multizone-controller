@@ -1,35 +1,35 @@
 """Support for controlling multiple media players with a single sensor."""
-from __future__ import annotations
-from typing import List
 
-from homeassistant.helpers.entity_component import EntityComponent
 import logging
 
-import voluptuous as vol
+import probatio
 
-from homeassistant.components.sensor import PLATFORM_SCHEMA, SensorEntity
 from homeassistant.components.media_player import (
-    _rename_keys,
     ATTR_MEDIA_VOLUME_LEVEL,
     ATTR_MEDIA_VOLUME_MUTED,
+    DOMAIN as MEDIA_PLAYER_DOMAIN,
+    services,
 )
-from homeassistant.components.media_player import DOMAIN as MEDIA_PLAYER_DOMAIN
+from homeassistant.components.sensor import (
+    PLATFORM_SCHEMA as SENSOR_PLATFORM_SCHEMA,
+    SensorEntity,
+)
 from homeassistant.const import (
     ATTR_ENTITY_ID,
     CONF_ICON,
     CONF_NAME,
-    CONF_UNIQUE_ID,
     CONF_SOURCE,
-    SERVICE_VOLUME_UP,
-    SERVICE_VOLUME_SET,
+    CONF_UNIQUE_ID,
     SERVICE_VOLUME_DOWN,
     SERVICE_VOLUME_MUTE,
+    SERVICE_VOLUME_SET,
+    SERVICE_VOLUME_UP,
+    STATE_IDLE,
     STATE_OFF,
     STATE_ON,
     STATE_PLAYING,
-    STATE_IDLE,
 )
-from homeassistant.core import callback
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import config_validation as cv, entity_platform
 from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.reload import async_setup_reload_service
@@ -58,36 +58,43 @@ DEFAULT_ICON_9_PLUS = "9-plus"
 SERVICE_VOLUME_TOGGLE_MUTE = "toggle_volume_mute"
 SERVICE_NEXT_ZONE = "next_zone"
 
-PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
+PLATFORM_SCHEMA = SENSOR_PLATFORM_SCHEMA.extend(
     {
-        vol.Required(CONF_ZONES): cv.ensure_list(
-            {
-                vol.Required(CONF_SOURCE): cv.entity_domain(MEDIA_PLAYER_DOMAIN),
-                vol.Optional(CONF_NAME): cv.string,
-                vol.Optional(CONF_ICON): cv.icon,
-            }
+        probatio.Required(CONF_ZONES): probatio.All(
+            probatio.EnsureList(),
+            [
+                {
+                    probatio.Required(CONF_SOURCE): cv.entity_domain(
+                        MEDIA_PLAYER_DOMAIN
+                    ),
+                    probatio.Optional(CONF_NAME): cv.string,
+                    probatio.Optional(CONF_ICON): cv.icon,
+                }
+            ],
         ),
-        vol.Optional(CONF_UNIQUE_ID): str,
-        vol.Optional(CONF_NAME, default=DEFAULT_NAME): str,
-        vol.Optional(CONF_VOLUME_MAX, default=1.0): vol.Coerce(float),
-        vol.Optional(CONF_VOLUME_MIN, default=0.0): vol.Coerce(float),
-        vol.Optional(CONF_VOLUME_INCREMENT, default=0.01): vol.Coerce(float),
-        vol.Optional(CONF_SNAP_VOLUME, default=False): bool,
-        vol.Optional(
+        probatio.Optional(CONF_UNIQUE_ID): str,
+        probatio.Optional(CONF_NAME, default=DEFAULT_NAME): str,
+        probatio.Optional(CONF_VOLUME_MAX, default=1.0): probatio.Coerce(float),
+        probatio.Optional(CONF_VOLUME_MIN, default=0.0): probatio.Coerce(float),
+        probatio.Optional(CONF_VOLUME_INCREMENT, default=0.01): probatio.Coerce(float),
+        probatio.Optional(CONF_SNAP_VOLUME, default=False): bool,
+        probatio.Optional(
             CONF_COMBINED,
             default={
                 CONF_NAME: DEFAULT_COMBINED_NAME,
                 CONF_ICON: DEFAULT_COMBINED_ICON,
             },
         ): {
-            vol.Optional(CONF_NAME, default=DEFAULT_COMBINED_NAME): cv.string,
-            vol.Optional(CONF_ICON, default=DEFAULT_COMBINED_ICON): cv.icon,
+            probatio.Optional(CONF_NAME, default=DEFAULT_COMBINED_NAME): cv.string,
+            probatio.Optional(CONF_ICON, default=DEFAULT_COMBINED_ICON): cv.icon,
         },
     }
 )
 
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
+async def async_setup_platform(
+    hass: HomeAssistant | None, config, async_add_entities, discovery_info=None
+):
     """Set up the multizone sensor."""
 
     unique_id = config.get(CONF_UNIQUE_ID)
@@ -105,10 +112,10 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         icon = zone.get(CONF_ICON, DEFAULT_ICON.format(icon_n))
         entity_id = zone[CONF_SOURCE]
 
-        if entity_id not in zone.keys():
+        if entity_id not in zone:
             zones[entity_id] = Zone(zone_name, icon)
         else:
-            _LOGGER.warn(
+            _LOGGER.warning(
                 "Duplicate entity_id '%s' in zone sources, ignoring", entity_id
             )
 
@@ -158,21 +165,21 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     )
     platform.async_register_entity_service(
         SERVICE_VOLUME_SET,
-        vol.All(
+        probatio.All(
             cv.make_entity_service_schema(
-                {vol.Required(ATTR_MEDIA_VOLUME_LEVEL): cv.small_float}
+                {probatio.Required(ATTR_MEDIA_VOLUME_LEVEL): cv.small_float}
             ),
-            _rename_keys(volume=ATTR_MEDIA_VOLUME_LEVEL),
+            services._rename_keys(volume=ATTR_MEDIA_VOLUME_LEVEL),  # noqa: SLF001
         ),
         "async_set_volume_level",
     )
     platform.async_register_entity_service(
         SERVICE_VOLUME_MUTE,
-        vol.All(
+        probatio.All(
             cv.make_entity_service_schema(
-                {vol.Required(ATTR_MEDIA_VOLUME_MUTED): cv.boolean}
+                {probatio.Required(ATTR_MEDIA_VOLUME_MUTED): cv.boolean}
             ),
-            _rename_keys(mute=ATTR_MEDIA_VOLUME_MUTED),
+            services._rename_keys(mute=ATTR_MEDIA_VOLUME_MUTED),  # noqa: SLF001
         ),
         "async_mute_volume",
     )
@@ -191,7 +198,8 @@ class MultizoneSensor(SensorEntity):
         volume_max: int,
         volume_inc: int,
         snap: bool,
-    ):
+    ) -> None:
+        """Initialize."""
         self._unique_id = unique_id
         self._name = name
         self._zones = zones
@@ -265,13 +273,12 @@ class MultizoneSensor(SensorEntity):
         nxt = None
         if len(zones) <= 1:
             return
-        elif self._current == self._all_zones:
+        if self._current == self._all_zones:
             nxt = zones[0]
+        elif self._current == zones[-1] and len(self._zones) == len(zones):
+            nxt = self._all_zones
         else:
-            if self._current == zones[-1] and len(self._zones) == len(zones):
-                nxt = self._all_zones
-            else:
-                nxt = self._get_next_zone(self._current)
+            nxt = self._get_next_zone(self._current)
 
         nxt.set_active(True)
         if nxt == self._all_zones:
@@ -296,7 +303,7 @@ class MultizoneSensor(SensorEntity):
             {ATTR_MEDIA_VOLUME_MUTED: mute},
             blocking=True,
             target={ATTR_ENTITY_ID: self._get_active_zones()},
-            context=self._context
+            context=self._context,
         )
 
     async def async_mute_volume(self, mute):
@@ -307,15 +314,13 @@ class MultizoneSensor(SensorEntity):
             {ATTR_MEDIA_VOLUME_MUTED: mute},
             blocking=True,
             target={ATTR_ENTITY_ID: self._get_active_zones()},
-            context=self._context
+            context=self._context,
         )
 
     def _toggle_mute_volume(self, entities) -> bool:
         return any(
-            [
-                self.hass.states.get(entity_id).attributes[ATTR_MEDIA_VOLUME_MUTED]
-                for entity_id in entities
-            ]
+            self.hass.states.get(entity_id).attributes[ATTR_MEDIA_VOLUME_MUTED]
+            for entity_id in entities
         )
 
     def toggle_mute_volume(self):
@@ -327,7 +332,7 @@ class MultizoneSensor(SensorEntity):
             {ATTR_MEDIA_VOLUME_MUTED: not self._toggle_mute_volume(entities)},
             blocking=True,
             target={ATTR_ENTITY_ID: entities},
-            context=self._context
+            context=self._context,
         )
 
     async def async_toggle_mute_volume(self):
@@ -339,7 +344,7 @@ class MultizoneSensor(SensorEntity):
             {ATTR_MEDIA_VOLUME_MUTED: not self._toggle_mute_volume(entities)},
             blocking=True,
             target={ATTR_ENTITY_ID: entities},
-            context=self._context
+            context=self._context,
         )
 
     def set_volume_level(self, volume):
@@ -350,7 +355,7 @@ class MultizoneSensor(SensorEntity):
             {ATTR_MEDIA_VOLUME_LEVEL: volume},
             blocking=True,
             target={ATTR_ENTITY_ID: self._get_active_zones()},
-            context=self._context
+            context=self._context,
         )
 
     async def async_set_volume_level(self, volume):
@@ -361,7 +366,7 @@ class MultizoneSensor(SensorEntity):
             {ATTR_MEDIA_VOLUME_LEVEL: volume},
             blocking=True,
             target={ATTR_ENTITY_ID: self._get_active_zones()},
-            context=self._context
+            context=self._context,
         )
 
     def _next_volume_up(self) -> float | None:
@@ -380,7 +385,7 @@ class MultizoneSensor(SensorEntity):
                 {ATTR_MEDIA_VOLUME_LEVEL: volume},
                 blocking=True,
                 target={ATTR_ENTITY_ID: self._get_active_zones()},
-                context=self._context
+                context=self._context,
             )
 
     async def async_volume_up(self):
@@ -393,7 +398,7 @@ class MultizoneSensor(SensorEntity):
                 {ATTR_MEDIA_VOLUME_LEVEL: volume},
                 blocking=True,
                 target={ATTR_ENTITY_ID: self._get_active_zones()},
-                context=self._context
+                context=self._context,
             )
 
     def _next_volume_down(self) -> float | None:
@@ -412,7 +417,7 @@ class MultizoneSensor(SensorEntity):
                 {ATTR_MEDIA_VOLUME_LEVEL: volume},
                 blocking=True,
                 target={ATTR_ENTITY_ID: self._get_active_zones()},
-                context=self._context
+                context=self._context,
             )
 
     async def async_volume_down(self):
@@ -425,7 +430,7 @@ class MultizoneSensor(SensorEntity):
                 {ATTR_MEDIA_VOLUME_LEVEL: volume},
                 blocking=True,
                 target={ATTR_ENTITY_ID: self._get_active_zones()},
-                context=self._context
+                context=self._context,
             )
 
     @callback
@@ -442,7 +447,9 @@ class MultizoneSensor(SensorEntity):
             self.async_write_ha_state()
             return
 
-        self._update_zones(zone, new_state.state in [STATE_ON , STATE_PLAYING, STATE_IDLE])
+        self._update_zones(
+            zone, new_state.state in [STATE_ON, STATE_PLAYING, STATE_IDLE]
+        )
         self.async_write_ha_state()
 
     @callback
@@ -452,7 +459,7 @@ class MultizoneSensor(SensorEntity):
         zone.set_active_and_available(value)
         # only 1 zone can be active at a time or all zones.
         if all(
-            [z.active == value and z.available == value for z in self._zones.values()]
+            z.active == value and z.available == value for z in self._zones.values()
         ):
             self._all_zones.set_active(value)
 
@@ -462,19 +469,18 @@ class MultizoneSensor(SensorEntity):
             else:
                 # ALL OFF
                 self._set_current_zone(None)
+        elif value:
+            # ONE ON
+            self._activate_single_zone(zone)
         else:
-            if value:
-                # ONE ON
-                self._activate_single_zone(zone)
+            # NEXT ONE
+            nxt = self._get_next_zone(zone)
+            if nxt is not None:
+                # NEXT ONE ON
+                self._activate_single_zone(nxt)
             else:
-                # NEXT ONE
-                nxt = self._get_next_zone(zone)
-                if nxt is not None:
-                    # NEXT ONE ON
-                    self._activate_single_zone(nxt)
-                else:
-                    # ALL OFF
-                    self._set_current_zone(None)
+                # ALL OFF
+                self._set_current_zone(None)
 
     def _get_next_zone(self, current: Zone) -> Zone:
         """Activate the next zone."""
@@ -490,7 +496,7 @@ class MultizoneSensor(SensorEntity):
                 if found:
                     after = zone
                     break
-                elif not found and before is None:
+                if not found and before is None:
                     before = zone
 
         if after is not None:
@@ -534,17 +540,20 @@ class MultizoneSensor(SensorEntity):
             level /= divisor
         return level
 
-    def _get_active_zones(self) -> List[str]:
+    def _get_active_zones(self) -> list[str]:
         """Return the current active zones."""
         return [e for e, z in self._zones.items() if z.active]
 
-    def _get_available_zones(self) -> List[str]:
+    def _get_available_zones(self) -> list[str]:
         """Return the current available zones."""
         return [e for e, z in self._zones.items() if z.available]
 
 
-class Zone(object):
-    def __init__(self, name: str, icon: str):
+class Zone:
+    """Representation of a media player speaker zone."""
+
+    def __init__(self, name: str, icon: str) -> None:
+        """Initialize."""
         self._name = name
         self._icon = icon
         self._active = False
@@ -581,7 +590,10 @@ class Zone(object):
 
 
 class AllZones(Zone):
-    def __init__(self, zones: List[Zone], name: str, icon: str):
+    """Representation of all media player speaker zones."""
+
+    def __init__(self, zones: list[Zone], name: str, icon: str) -> None:
+        """Initialize."""
         super().__init__(name, icon)
         self._zones = zones
 
@@ -590,12 +602,11 @@ class AllZones(Zone):
         """Zone in use."""
         if self.available:
             return self._active
-        else:
-            ret = False
-            self._active = ret
-            return ret
+        ret = False
+        self._active = ret
+        return ret
 
     @property
     def available(self) -> bool:
         """Zone available for use."""
-        return all([z.available for z in self._zones])
+        return all(z.available for z in self._zones)
